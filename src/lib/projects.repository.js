@@ -1,72 +1,68 @@
-const fs = require("fs");
-const path = require("path");
+const Project = require("../models/Project");
+const Category = require("../models/Category");
 
-const DATA_PATH = path.join(__dirname, "..", "..", "data", "projects.json");
-
-function loadProjects() {
-  const raw = fs.readFileSync(DATA_PATH, "utf-8");
-  const parsed = JSON.parse(raw);
-
-  if (!parsed || !Array.isArray(parsed.projects)) return [];
-  return parsed.projects;
+function escapeRegex(s = "") {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function getActiveProjects() {
-  return loadProjects().filter((p) => p && p.status === true);
+function buildFilter({ q, tag, categoryId, activeOnly } = {}) {
+  const and = [];
+  
+  if (activeOnly) and.push({ isActive: true });
+  if (categoryId) and.push({ categoryId });
+
+  if (q) {
+    const rx = new RegExp(escapeRegex(q), "i");
+    and.push({
+      $or: [
+        { title: rx },
+        { tagline: rx },
+        { description: rx },
+        { stack: rx },
+        { "tags.name": rx },
+      ],
+    });
+  }
+
+  if (tag) {
+    and.push({ "tags.name": new RegExp(`^${escapeRegex(tag)}$`, "i") });
+  }
+
+  return and.length > 0 ? { $and: and } : {};
 }
 
-function findById(id) {
-  if (!id) return null;
-  const all = loadProjects();
-  return all.find((p) => p.id === id) || null;
+async function getActiveProjects({ q, tag, categoryId } = {}) {
+  const filter = buildFilter({ q, tag, categoryId, activeOnly: true });
+  return Project.find(filter).populate("categoryId").sort({ title: 1 }).lean();
 }
 
-function findBySlug(slug) {
+async function findBySlug(slug) {
   if (!slug) return null;
-  const all = loadProjects();
-  return all.find((p) => p.slug === slug) || null;
+  return Project.findOne({ slug }).populate("categoryId").lean();
 }
 
-function normalizeTerm(q) {
-  return String(q || "")
-    .trim()
-    .toLowerCase();
+async function findById(id) {
+  if (!id) return null;
+  return Project.findById(id).populate("categoryId").lean();
 }
 
-function includesCI(haystack, needle) {
-  if (!haystack) return false;
-  return String(haystack).toLowerCase().includes(needle);
+async function getCategoryBySlug(slug) {
+  if (!slug) return null;
+  return Category.findOne({ slug }).lean();
 }
 
-function arrayIncludesCI(arr, needle) {
-  if (!Array.isArray(arr)) return false;
-  return arr.some((item) => includesCI(item, needle));
-}
-
-function matchesTerm(project, q) {
-  const term = normalizeTerm(q);
-  if (!term) return true;
-
-  return (
-    includesCI(project.title, term) ||
-    includesCI(project.tagline, term) ||
-    includesCI(project.description, term) ||
-    arrayIncludesCI(project.stack, term) ||
-    arrayIncludesCI(project.tags, term)
-  );
-}
-
-function searchActive(q) {
-  const term = normalizeTerm(q);
-  const active = getActiveProjects();
-  if (!term) return active;
-  return active.filter((p) => matchesTerm(p, term));
+function parseTagsCsv(csv) {
+  return String(csv || "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((name) => ({ name }));
 }
 
 module.exports = {
-  loadProjects,
   getActiveProjects,
-  findById,
   findBySlug,
-  searchActive,
+  findById,
+  getCategoryBySlug,
+  parseTagsCsv,
 };

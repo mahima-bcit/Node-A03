@@ -25,6 +25,11 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+  res.locals.title = "Portfolio Launchpad";
+  next();
+});
+
 // View Engine (EJS) + Layouts
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));

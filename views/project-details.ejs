@@ -1,4 +1,9 @@
-<% const images = (project.images || []); %>
+<% 
+  const images = (project?.images || []);
+  const category = project?.categoryId && typeof project.categoryId === "object" ? project.categoryId : null;
+  const tags = (project?.tags || []).map((t) => (typeof t === "string" ? t : t?.name)).filter(Boolean);
+%>
+
 <% if (images.length > 0) { %>
   <div class="slider">
     <div class="slider-track">
@@ -22,7 +27,18 @@
 <% } %>
 
 <h1><%= project.title %></h1>
-<p><%= project.tagline %></p>
+
+<% if (project.tagline) { %>
+  <p><%= project.tagline %></p>
+<% } %>
+
+<% if (category) { %>
+  <p>
+    <strong>Category:</strong>
+    <a href="/projects/category/<%= category.slug %>"><%= category.name %></a>
+  </p>
+<% } %>
+
 <p><%= project.description %></p>
 
 <% if (project.stack && project.stack.length) { %>
@@ -34,11 +50,11 @@
   </div>
 <% } %>
 
-<% if (project.tags && project.tags.length) { %>
+<% if (tags.length) { %>
   <h3>Tags</h3>
   <div class="pills">
-    <% project.tags.forEach(function(t){ %>
-      <span class="pill"><%= t %></span>
+    <% tags.forEach(function(t){ %>
+      <a class="pill" href="/projects?tag=<%= encodeURIComponent(t) %>"><%= t %></a>
     <% }) %>
   </div>
 <% } %>

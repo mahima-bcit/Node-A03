@@ -14,24 +14,70 @@ router.get("/about", (req, res) => {
 });
 
 // GET /projects?q=term
-router.get("/projects", (req, res) => {
+router.get("/projects", async (req, res) => {
+  if (!res.locals.dbReady) {
+    return res.status(500).render("db-error", { error: res.locals.dbError });
+  }
+
   const q = (req.query.q || "").trim();
-  const projects = q ? repo.searchActive(q) : repo.getActiveProjects();
-  res.render("projects", { title: "Projects", projects, q });
+  const tag = (req.query.tag || "").trim();
+
+  const projects = await repo.getActiveProjects({ q, tag });
+  res.render("projects", {
+    title: "Projects",
+    projects,
+    q,
+    tag,
+    heading: "Projects",
+  });
 });
 
-// GET /projects/:slug
-router.get("/projects/:slug", (req, res) => {
-  const slug = req.params.slug;
-  const project = repo.findBySlug(slug);
+router.get("/projects/category/:slug", async (req, res) => {
+  if (!res.locals.dbReady) {
+    return res.status(500).render("db-error", { error: res.locals.dbError });
+  }
 
-  if (!project || project.status !== true) {
+  const q = (req.query.q || "").trim();
+  const tag = (req.query.tag || "").trim();
+
+  const category = await repo.getCategoryBySlug(req.params.slug);
+  if (!category) {
     return res
       .status(404)
       .render("404", { title: "Not Found", path: req.originalUrl });
   }
 
-  const otherProjects = repo.getActiveProjects().filter((p) => p.slug !== slug);
+  const projects = await repo.getActiveProjects({
+    q,
+    tag,
+    categoryId: category._id,
+  });
+  res.render("projects", {
+    title: `Projects = ${category.name}`,
+    projects,
+    q,
+    tag,
+    heading: `Projects in ${category.name}`,
+  });
+});
+
+// GET /projects/:slug
+router.get("/projects/:slug", async (req, res) => {
+  if (!res.locals.dbReady) {
+    return res.status(500).render("db-error", { error: res.locals.dbError });
+  }
+
+  const project = await repo.findBySlug(req.params.slug);
+
+  if (!project || project.isActive !== true) {
+    return res
+      .status(404)
+      .render("404", { title: "Not Found", path: req.originalUrl });
+  }
+
+  const otherProjects = (await repo.getActiveProjects()).filter(
+    (p) => p.slug !== project.slug,
+  );
 
   res.render("project-details", {
     title: project.title,

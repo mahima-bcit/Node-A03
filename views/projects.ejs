@@ -1,4 +1,4 @@
-<h1>Projects</h1>
+<h1><%= heading || "Projects" %></h1>
 
 <p class="projects-intro">
   A few selected projects from the BCIT SSD program, reflecting coursework in web development,
@@ -21,6 +21,15 @@
     value="<%= q || '' %>"
     placeholder="Search projects... (e.g., vite, react, asp.net)"
     autocomplete="off"
+  />
+
+  <input
+    type="text"
+    id="tag" 
+    name="tag" 
+    value="<%= tag || '' %>" 
+    placeholder="Tag (e.g. crud)" 
+    autocomplete="off" 
   />
 
   <button type="submit">Search</button>

@@ -1,3 +1,9 @@
+require("dotenv").config();
+
+const { initMongo, isDbReady, getDbError } = require("./src/lib/mongo");
+
+initMongo(process.env.MONGODB_URI);
+
 const express = require("express");
 const path = require("path");
 const expressLayouts = require("express-ejs-layouts");
@@ -12,6 +18,12 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.urlencoded({ extended: false }));
+
+app.use((req, res, next) => {
+  res.locals.dbReady = isDbReady();
+  res.locals.dbError = getDbError();
+  next();
+});
 
 // View Engine (EJS) + Layouts
 app.set("view engine", "ejs");
